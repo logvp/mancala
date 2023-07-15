@@ -48,10 +48,10 @@ impl Board {
             black: Side {
                 side: [initial_fill; Self::LENGTH],
                 points: 0,
-            }
+            },
         }
     }
-    
+
     pub fn white_move(&mut self, index: usize) -> MoveStatus {
         Self::action(&mut self.white, &mut self.black, index - 1)
     }
@@ -105,7 +105,7 @@ impl Board {
                     *cell += 1;
                     return MoveStatus::GoAgain;
                 }
-                (_, 0, _) => unreachable!()
+                (_, 0, _) => unreachable!(),
             }
 
             index += 1;
@@ -130,19 +130,23 @@ impl Board {
         assert_eq!(Self::LENGTH, 6);
         println!(" White   (6)  (5)  (4)  (3)  (2)  (1)");
         let side = self.white.side;
-        println!("[{:>5}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}]", 
-                 self.white.points, side[5], side[4], side[3], side[2], side[1], side[0]);
+        println!(
+            "[{:>5}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}]",
+            self.white.points, side[5], side[4], side[3], side[2], side[1], side[0]
+        );
         let side = self.black.side;
-        println!("        [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:<5}]", 
-                 side[0], side[1], side[2], side[3], side[4], side[5], self.black.points); 
+        println!(
+            "        [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:<5}]",
+            side[0], side[1], side[2], side[3], side[4], side[5], self.black.points
+        );
         println!("         (1)  (2)  (3)  (4)  (5)  (6)  Black");
     }
 }
 
-fn get_input(mut buffer: &mut String) -> io::Result<usize> {
+fn get_input(buffer: &mut String) -> io::Result<usize> {
     Ok(loop {
         buffer.clear();
-        io::stdin().read_line(&mut buffer)?;
+        io::stdin().read_line(buffer)?;
         match buffer.trim().parse::<usize>() {
             Ok(value) => break value,
             Err(_) => println!("Invalid selection!"),
@@ -158,7 +162,9 @@ fn main() -> io::Result<()> {
     'game_loop: loop {
         loop {
             board.print();
-            if board.state().is_over() { break 'game_loop; }
+            if board.state().is_over() {
+                break 'game_loop;
+            }
             println!("White move:");
             match board.white_move(get_input(&mut buffer)?) {
                 MoveStatus::Ok => break,
@@ -172,7 +178,9 @@ fn main() -> io::Result<()> {
         }
         loop {
             board.print();
-            if board.state().is_over() { break 'game_loop; }
+            if board.state().is_over() {
+                break 'game_loop;
+            }
             println!("Black move:");
             match board.black_move(get_input(&mut buffer)?) {
                 MoveStatus::Ok => break,
