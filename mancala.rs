@@ -68,10 +68,6 @@ impl Board {
         };
         this.side[index] = 0;
 
-        if hand == 0 {
-            unreachable!();
-        }
-
         index += 1;
         loop {
             let (pickupable, cell): (bool, &mut u32) = if index < this.side.len() {
@@ -156,7 +152,6 @@ fn get_input(buffer: &mut String) -> io::Result<usize> {
 
 fn main() -> io::Result<()> {
     let mut buffer = String::new();
-
     let mut board = Board::new(4);
 
     'game_loop: loop {
@@ -170,10 +165,7 @@ fn main() -> io::Result<()> {
                 MoveStatus::Ok => break,
                 MoveStatus::EmptyCell => println!("You can't select an empty cell!"),
                 MoveStatus::OutOfBounds => println!("Out of bounds!"),
-                MoveStatus::GoAgain => {
-                    println!("Go again!");
-                    board.print();
-                }
+                MoveStatus::GoAgain => println!("Go again!"),
             }
         }
         loop {
@@ -186,16 +178,17 @@ fn main() -> io::Result<()> {
                 MoveStatus::Ok => break,
                 MoveStatus::EmptyCell => println!("You can't select an empty cell!"),
                 MoveStatus::OutOfBounds => println!("Out of bounds!"),
-                MoveStatus::GoAgain => {
-                    println!("Go again!");
-                    board.print();
-                }
+                MoveStatus::GoAgain => println!("Go again!"),
             }
         }
     }
-    println!("{:?}", board);
-    println!("{:?}", board.state());
+    
+    match board.state() {
+        Outcome::Winner(winner) => println!("Winner: {:?}", winner),
+        Outcome::Tie => println!("Tie Game!"),
+        Outcome::NotOver => unreachable!(),
+    }
 
-    println!("Hello, World!");
     Ok(())
 }
+
