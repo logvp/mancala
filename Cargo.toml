@@ -8,5 +8,9 @@ edition = "2021"
 [dependencies]
 
 [[bin]]
-name = "mancala"
-path = "mancala.rs"
+name = "mancala-server"
+path = "src/server.rs"
+
+[[bin]]
+name = "mancala-client"
+path = "src/client.rs"
