@@ -1,4 +1,4 @@
-use std::{io, rc::Rc, fmt::format};
+use std::{io, rc::Rc};
 
 enum Outcome {
     Winner(Rc<str>),
@@ -36,11 +36,14 @@ impl Board {
     pub fn new(initial_fill: u32, player_names: &[&str]) -> Board {
         Board {
             whos_up: 0,
-            players: player_names.iter().map(|&name| Player {
-                name: Rc::from(name),
-                side: vec![initial_fill; Self::LENGTH],
-                points: 0,
-            }).collect(),
+            players: player_names
+                .iter()
+                .map(|&name| Player {
+                    name: Rc::from(name),
+                    side: vec![initial_fill; Self::LENGTH],
+                    points: 0,
+                })
+                .collect(),
         }
     }
 
@@ -61,7 +64,10 @@ impl Board {
         index += 1;
         loop {
             let (pickupable, cell) = if index < self.players[player_index].side.len() {
-                (true, self.players[player_index].side.get_mut(index).unwrap())
+                (
+                    true,
+                    self.players[player_index].side.get_mut(index).unwrap(),
+                )
             } else if player_index == player && index == self.players[player].side.len() {
                 (false, &mut self.players[player].points)
             } else {
@@ -96,7 +102,9 @@ impl Board {
     }
 
     pub fn state(&self) -> Outcome {
-        if self.players[0].side.iter().sum::<u32>() == 0 || self.players[1].side.iter().sum::<u32>() == 0 {
+        if self.players[0].side.iter().sum::<u32>() == 0
+            || self.players[1].side.iter().sum::<u32>() == 0
+        {
             if self.players[0].points > self.players[1].points {
                 Outcome::Winner(self.players[0].name.clone())
             } else if self.players[1].points > self.players[0].points {
@@ -111,25 +119,44 @@ impl Board {
 
     pub fn print(&self) {
         assert_eq!(Self::LENGTH, 6);
-        let width = self.players.iter().map(|player| player.name.len()).max().unwrap_or_default() + 2;
-        let format_name = |name, pad| format!("{pad}{}{pad}", name); 
+        let width = self
+            .players
+            .iter()
+            .map(|player| player.name.len())
+            .max()
+            .unwrap_or_default()
+            + 2;
+        let format_name = |name, pad| format!("{pad}{}{pad}", name);
         for i in 0..self.players.len() {
             let player = &self.players[i];
             let side = &player.side;
-            let pad = if i == self.whos_up { '*' } else { ' ' }; 
+            let pad = if i == self.whos_up { '*' } else { ' ' };
             if i % 2 == 0 {
-                println!(" {:^width$}   (6)  (5)  (4)  (3)  (2)  (1)", format_name(self.players[i].name.clone(), pad));
+                println!(
+                    " {:^width$}   (6)  (5)  (4)  (3)  (2)  (1)",
+                    format_name(self.players[i].name.clone(), pad)
+                );
                 println!(
                     "[{:^width$}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}]",
                     player.points, side[5], side[4], side[3], side[2], side[1], side[0]
-                    );
+                );
             } else {
                 println!(
                     "{:<width$}   [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:^width$}]",
-                    "", side[0], side[1], side[2], side[3], side[4], side[5], self.players[i].points
-                    );
-                println!(" {: <width$}   (1)  (2)  (3)  (4)  (5)  (6)  {:^width$}", "", format_name(self.players[i].name.clone(), pad));
-
+                    "",
+                    side[0],
+                    side[1],
+                    side[2],
+                    side[3],
+                    side[4],
+                    side[5],
+                    self.players[i].points
+                );
+                println!(
+                    " {: <width$}   (1)  (2)  (3)  (4)  (5)  (6)  {:^width$}",
+                    "",
+                    format_name(self.players[i].name.clone(), pad)
+                );
             }
         }
     }
@@ -163,7 +190,7 @@ fn main() -> io::Result<()> {
             MoveStatus::GoAgain => println!("Go again!"),
         }
     }
-    
+
     match board.state() {
         Outcome::Winner(winner) => println!("Winner: {}", winner),
         Outcome::Tie => println!("Tie Game!"),
@@ -172,4 +199,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
