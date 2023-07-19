@@ -1,8 +1,7 @@
-use std::io;
+use std::{io, rc::Rc, fmt::format};
 
-#[derive(Debug)]
 enum Outcome {
-    Winner(Player),
+    Winner(Rc<str>),
     Tie,
     NotOver,
 }
@@ -12,76 +11,63 @@ impl Outcome {
     }
 }
 
-#[derive(Debug)]
-enum Player {
-    White,
-    Black,
-}
-
 enum MoveStatus {
     GoAgain,
     OutOfBounds,
     EmptyCell,
-    Ok,
+    Done,
 }
 
-#[derive(Debug)]
-struct Side {
-    side: [u32; 6],
+#[derive(Debug, Clone)]
+struct Player {
+    pub name: Rc<str>,
+    side: Vec<u32>,
     points: u32,
 }
 
 #[derive(Debug)]
 struct Board {
-    white: Side,
-    black: Side,
+    whos_up: usize,
+    players: Vec<Player>,
 }
 impl Board {
     const LENGTH: usize = 6;
 
-    pub fn new(initial_fill: u32) -> Board {
+    pub fn new(initial_fill: u32, player_names: &[&str]) -> Board {
         Board {
-            white: Side {
-                side: [initial_fill; Self::LENGTH],
+            whos_up: 0,
+            players: player_names.iter().map(|&name| Player {
+                name: Rc::from(name),
+                side: vec![initial_fill; Self::LENGTH],
                 points: 0,
-            },
-            black: Side {
-                side: [initial_fill; Self::LENGTH],
-                points: 0,
-            },
+            }).collect(),
         }
     }
 
-    pub fn white_move(&mut self, index: usize) -> MoveStatus {
-        Self::action(&mut self.white, &mut self.black, index - 1)
+    pub fn player(&self) -> Rc<str> {
+        self.players[self.whos_up].name.clone()
     }
 
-    pub fn black_move(&mut self, index: usize) -> MoveStatus {
-        Self::action(&mut self.black, &mut self.white, index - 1)
-    }
-
-    fn action(this: &mut Side, other: &mut Side, mut index: usize) -> MoveStatus {
-        let mut hand: u32 = match this.side.get(index) {
+    pub fn turn(&mut self, mut index: usize) -> MoveStatus {
+        let player = self.whos_up;
+        let mut player_index = player;
+        let mut hand: u32 = match self.players[player].side.get(index) {
             None => return MoveStatus::OutOfBounds,
             Some(0) => return MoveStatus::EmptyCell,
             Some(&value) => value,
         };
-        this.side[index] = 0;
+        self.players[player].side[index] = 0;
 
         index += 1;
         loop {
-            let (pickupable, cell): (bool, &mut u32) = if index < this.side.len() {
-                (true, this.side.get_mut(index).unwrap())
-            } else if index == this.side.len() {
-                (false, &mut this.points)
+            let (pickupable, cell) = if index < self.players[player_index].side.len() {
+                (true, self.players[player_index].side.get_mut(index).unwrap())
+            } else if player_index == player && index == self.players[player].side.len() {
+                (false, &mut self.players[player].points)
             } else {
-                let bindex = index - this.side.len();
-                if bindex < other.side.len() {
-                    (true, other.side.get_mut(bindex).unwrap())
-                } else {
-                    index = 0;
-                    continue;
-                }
+                player_index = (player_index + 1) % self.players.len();
+                index = 0;
+                continue;
             };
 
             match (pickupable, hand, *cell) {
@@ -95,7 +81,8 @@ impl Board {
                 }
                 (true, 1, 0) => {
                     *cell += 1;
-                    return MoveStatus::Ok;
+                    self.whos_up = (self.whos_up + 1) % self.players.len();
+                    return MoveStatus::Done;
                 }
                 (false, 1, _) => {
                     *cell += 1;
@@ -109,11 +96,11 @@ impl Board {
     }
 
     pub fn state(&self) -> Outcome {
-        if self.white.side.iter().sum::<u32>() == 0 || self.black.side.iter().sum::<u32>() == 0 {
-            if self.white.points > self.black.points {
-                Outcome::Winner(Player::White)
-            } else if self.black.points > self.white.points {
-                Outcome::Winner(Player::Black)
+        if self.players[0].side.iter().sum::<u32>() == 0 || self.players[1].side.iter().sum::<u32>() == 0 {
+            if self.players[0].points > self.players[1].points {
+                Outcome::Winner(self.players[0].name.clone())
+            } else if self.players[1].points > self.players[0].points {
+                Outcome::Winner(self.players[1].name.clone())
             } else {
                 Outcome::Tie
             }
@@ -124,18 +111,27 @@ impl Board {
 
     pub fn print(&self) {
         assert_eq!(Self::LENGTH, 6);
-        println!(" White   (6)  (5)  (4)  (3)  (2)  (1)");
-        let side = self.white.side;
-        println!(
-            "[{:>5}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}]",
-            self.white.points, side[5], side[4], side[3], side[2], side[1], side[0]
-        );
-        let side = self.black.side;
-        println!(
-            "        [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:<5}]",
-            side[0], side[1], side[2], side[3], side[4], side[5], self.black.points
-        );
-        println!("         (1)  (2)  (3)  (4)  (5)  (6)  Black");
+        let width = self.players.iter().map(|player| player.name.len()).max().unwrap_or_default() + 2;
+        let format_name = |name, pad| format!("{pad}{}{pad}", name); 
+        for i in 0..self.players.len() {
+            let player = &self.players[i];
+            let side = &player.side;
+            let pad = if i == self.whos_up { '*' } else { ' ' }; 
+            if i % 2 == 0 {
+                println!(" {:^width$}   (6)  (5)  (4)  (3)  (2)  (1)", format_name(self.players[i].name.clone(), pad));
+                println!(
+                    "[{:^width$}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}]",
+                    player.points, side[5], side[4], side[3], side[2], side[1], side[0]
+                    );
+            } else {
+                println!(
+                    "{:<width$}   [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:>2}] [{:^width$}]",
+                    "", side[0], side[1], side[2], side[3], side[4], side[5], self.players[i].points
+                    );
+                println!(" {: <width$}   (1)  (2)  (3)  (4)  (5)  (6)  {:^width$}", "", format_name(self.players[i].name.clone(), pad));
+
+            }
+        }
     }
 }
 
@@ -152,39 +148,24 @@ fn get_input(buffer: &mut String) -> io::Result<usize> {
 
 fn main() -> io::Result<()> {
     let mut buffer = String::new();
-    let mut board = Board::new(4);
+    let mut board = Board::new(4, &["White", "Black"]);
 
-    'game_loop: loop {
-        loop {
-            board.print();
-            if board.state().is_over() {
-                break 'game_loop;
-            }
-            println!("White move:");
-            match board.white_move(get_input(&mut buffer)?) {
-                MoveStatus::Ok => break,
-                MoveStatus::EmptyCell => println!("You can't select an empty cell!"),
-                MoveStatus::OutOfBounds => println!("Out of bounds!"),
-                MoveStatus::GoAgain => println!("Go again!"),
-            }
+    loop {
+        board.print();
+        if board.state().is_over() {
+            break;
         }
-        loop {
-            board.print();
-            if board.state().is_over() {
-                break 'game_loop;
-            }
-            println!("Black move:");
-            match board.black_move(get_input(&mut buffer)?) {
-                MoveStatus::Ok => break,
-                MoveStatus::EmptyCell => println!("You can't select an empty cell!"),
-                MoveStatus::OutOfBounds => println!("Out of bounds!"),
-                MoveStatus::GoAgain => println!("Go again!"),
-            }
+        println!("{}'s move:", board.player());
+        match board.turn(get_input(&mut buffer)? - 1) {
+            MoveStatus::Done => (),
+            MoveStatus::EmptyCell => println!("You can't select an empty cell!"),
+            MoveStatus::OutOfBounds => println!("Out of bounds!"),
+            MoveStatus::GoAgain => println!("Go again!"),
         }
     }
     
     match board.state() {
-        Outcome::Winner(winner) => println!("Winner: {:?}", winner),
+        Outcome::Winner(winner) => println!("Winner: {}", winner),
         Outcome::Tie => println!("Tie Game!"),
         Outcome::NotOver => unreachable!(),
     }
