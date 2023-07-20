@@ -1,4 +1,4 @@
-use std::{io, rc::Rc};
+use std::{cmp::Ordering, io, rc::Rc};
 
 enum Outcome {
     Winner(Rc<str>),
@@ -102,15 +102,29 @@ impl Board {
     }
 
     pub fn state(&self) -> Outcome {
-        if self.players[0].side.iter().sum::<u32>() == 0
-            || self.players[1].side.iter().sum::<u32>() == 0
+        if self.players.is_empty()
+            || self
+                .players
+                .iter()
+                .any(|player| player.side.iter().sum::<u32>() == 0)
         {
-            if self.players[0].points > self.players[1].points {
-                Outcome::Winner(self.players[0].name.clone())
-            } else if self.players[1].points > self.players[0].points {
-                Outcome::Winner(self.players[1].name.clone())
-            } else {
-                Outcome::Tie
+            match self
+                .players
+                .iter()
+                .map(Option::Some)
+                .reduce(|max, x| match (max, x) {
+                    (None, _) => None,
+                    (_, None) => unreachable!(),
+                    (Some(a), Some(b)) => match Ord::cmp(&a.points, &b.points) {
+                        Ordering::Less => x,
+                        Ordering::Equal => None,
+                        Ordering::Greater => max,
+                    },
+                })
+                .flatten()
+            {
+                Some(player) => Outcome::Winner(player.name.clone()),
+                None => Outcome::Tie,
             }
         } else {
             Outcome::NotOver
