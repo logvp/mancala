@@ -1,24 +1,32 @@
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
+use std::str::from_utf8;
 use std::thread;
 
 fn handle_client(mut stream: TcpStream) {
-    let mut data = [0 as u8; 50]; // using 50 byte buffer
-    while match stream.read(&mut data) {
-        Ok(size) => {
-            // echo everything!
-            stream.write(&data[0..size]).unwrap();
-            true
+    let mut data = [0 as u8; 256];
+    loop {
+        data.fill(0);
+        match stream.read(&mut data) {
+            Ok(0) => {
+                println!("Client disconnected");
+                break;
+            }
+            Ok(size) => {
+                println!("{}", from_utf8(&data).unwrap());
+                // echo
+                stream.write(&data[..size]).unwrap();
+            }
+            Err(_) => {
+                println!(
+                    "An error occurred, terminating connection with {}",
+                    stream.peer_addr().unwrap()
+                );
+                stream.shutdown(Shutdown::Both).unwrap();
+                break;
+            }
         }
-        Err(_) => {
-            println!(
-                "An error occurred, terminating connection with {}",
-                stream.peer_addr().unwrap()
-            );
-            stream.shutdown(Shutdown::Both).unwrap();
-            false
-        }
-    } {}
+    }
 }
 
 fn main() {
