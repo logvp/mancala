@@ -1,11 +1,11 @@
 use std::{cmp::Ordering, io, rc::Rc};
 
-enum Outcome {
-    Winner(Rc<str>),
+enum Outcome<'a> {
+    Winner(&'a str),
     Tie,
     NotOver,
 }
-impl Outcome {
+impl<'a> Outcome<'a> {
     pub fn is_over(&self) -> bool {
         !matches!(self, Self::NotOver)
     }
@@ -19,27 +19,27 @@ enum MoveStatus {
 }
 
 #[derive(Debug, Clone)]
-struct Player {
-    pub name: Rc<str>,
+struct Player<'a> {
+    pub name: &'a str,
     side: Vec<u32>,
     points: u32,
 }
 
 #[derive(Debug)]
-struct Board {
+pub struct Board<'a> {
     whos_up: usize,
-    players: Vec<Player>,
+    players: Vec<Player<'a>>,
 }
-impl Board {
+impl<'a> Board<'a> {
     const LENGTH: usize = 6;
 
-    pub fn new(initial_fill: u32, player_names: &[&str]) -> Board {
+    pub fn new(initial_fill: u32, player_names: &[&'a str]) -> Board<'a> {
         Board {
             whos_up: 0,
             players: player_names
                 .iter()
                 .map(|&name| Player {
-                    name: Rc::from(name),
+                    name,
                     side: vec![initial_fill; Self::LENGTH],
                     points: 0,
                 })
@@ -47,7 +47,7 @@ impl Board {
         }
     }
 
-    pub fn player(&self) -> Rc<str> {
+    pub fn player(&self) -> &'a str {
         self.players[self.whos_up].name.clone()
     }
 
